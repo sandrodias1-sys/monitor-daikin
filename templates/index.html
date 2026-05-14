@@ -209,21 +209,19 @@
         }
 
         async function salvarTermos() {
-            if (termosAtivos.length === 0) {
-                alert('Adicione pelo menos um termo antes de salvar!');
-                return;
-            }
-            const resp = await fetch('/api/termos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ termos: termosAtivos.map(t => t.replace(/\+/g, ' ')) })
-            });
-            const dados = await resp.json();
-            termosAtivos = dados.termos;
-            renderizarTermos();
-            const aviso = document.getElementById('aviso-termos');
-            aviso.classList.add('show');
-            setTimeout(() => aviso.classList.remove('show'), 3000);
+    if (termosAtivos.length === 0) {
+        alert('Adicione pelo menos um termo antes de salvar!');
+        return;
+    }
+    await fetch('/api/termos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ termos: termosAtivos.map(t => t.replace(/\+/g, ' ')) })
+    });
+    renderizarTermos();
+    const aviso = document.getElementById('aviso-termos');
+    aviso.classList.add('show');
+    setTimeout(() => aviso.classList.remove('show'), 3000);
         }
 
         async function varrerAgora() {
