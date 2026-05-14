@@ -132,7 +132,7 @@ def buscar_youtube(termo):
             "q": termo_limpo,
             "type": "video",
             "order": "date",
-            "maxResults": 5,
+            "maxResults": 10,
             "regionCode": "BR",
             "relevanceLanguage": "pt",
             "key": CHAVE_YOUTUBE
@@ -140,13 +140,16 @@ def buscar_youtube(termo):
         resposta = requests.get(url, params=params)
         dados = resposta.json()
         mencoes = []
-        palavras_termo = [p.lower() for p in termo_limpo.split()]
+        palavras_portugues = ["ção", "ões", "ão", "condicionado", "instalação", "climatização", "assistência", "manutenção", "inverter", "split", "preço", "comprar", "brasil", "brasileiro", "review", "avaliação", "como", "para", "com", "não", "está", "uma", "que"]
         for item in dados.get("items", []):
             titulo = item["snippet"]["title"]
             descricao = item["snippet"].get("description", "")
-            texto_completo = (titulo + " " + descricao).lower()
-            tem_todos = all(p in texto_completo for p in palavras_termo)
-            if not tem_todos:
+            canal = item["snippet"].get("channelTitle", "")
+            texto_completo = (titulo + " " + descricao + " " + canal).lower()
+            if "daikin" not in texto_completo:
+                continue
+            tem_portugues = any(p in texto_completo for p in palavras_portugues)
+            if not tem_portugues:
                 continue
             mencoes.append({
                 "titulo": titulo,
@@ -236,6 +239,9 @@ def executar_varredura():
                     titulo = entry.get("title", "")
                     link = entry.get("link", "")
                     conteudo = extrair_conteudo(link)
+                    texto_verificar = (titulo + " " + conteudo).lower()
+                    if "daikin" not in texto_verificar:
+                        continue
                     todas.append({
                         "titulo": titulo,
                         "conteudo": conteudo,
@@ -253,13 +259,16 @@ def executar_varredura():
             for entry in feed.entries[:5]:
                 titulo = entry.get("title", "")
                 link = entry.get("link", "")
-                todas.append({
-                    "titulo": titulo,
-                    "conteudo": extrair_conteudo(link),
-                    "link": link,
-                    "fonte": "Blog",
-                    "termo": "blog",
-                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                texto_verificar = (titulo + " " + conteudo).lower()
+                if "daikin" not in texto_verificar:
+                        continue
+                    todas.append({
+                        "titulo": titulo,
+                        "conteudo": conteudo,
+                        "link": link,
+                        "fonte": nome,
+                        "termo": termo_display,
+                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
                 })
 
         novas = [m for m in todas if not ja_visto(m["link"], historico)]
