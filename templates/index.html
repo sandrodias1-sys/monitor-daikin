@@ -31,8 +31,6 @@
         .btn-add:hover { background: #00409c; }
         .btn-salvar-termos { background: #43a047; color: white; border: none; border-radius: 20px; padding: 8px 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
         .btn-salvar-termos:hover { background: #388e3c; }
-        .dica-daikin { font-size: 11px; color: #f57c00; margin-top: 8px; display: none; }
-        .dica-daikin.show { display: block; }
         .filtros { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
         .filtro-btn { padding: 7px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 13px; background: #e0e0e0; color: #333; }
         .filtro-btn.ativo { color: white; }
@@ -67,6 +65,8 @@
         .acoes { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .btn-corrigir { background: none; border: 1px solid #ccc; border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: #666; }
         .btn-corrigir:hover { background: #f5f5f5; }
+        .btn-ocultar { background: none; border: 1px solid #ffcdd2; border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: #c62828; }
+        .btn-ocultar:hover { background: #ffebee; }
         .correcao-form { display: none; margin-top: 10px; background: #f9f9f9; border-radius: 8px; padding: 12px; }
         .correcao-form.aberto { display: block; }
         .correcao-form label { font-size: 12px; color: #666; display: block; margin-bottom: 6px; }
@@ -84,7 +84,8 @@
         .aviso { padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-top: 10px; display: none; }
         .aviso.show { display: block; }
         .aviso.verde { background: #e8f5e9; color: #2e7d32; }
-        .aviso.laranja { background: #fff3e0; color: #e65100; }
+        .dica-daikin { font-size: 11px; color: #f57c00; margin-top: 8px; display: none; }
+        .dica-daikin.show { display: block; }
     </style>
 </head>
 <body>
@@ -151,6 +152,13 @@
             document.getElementById('n-neutro').textContent = stats.neutro;
             document.getElementById('n-informativo').textContent = stats.informativo;
             document.getElementById('ultima').textContent = 'Atualizado: ' + stats.ultima_atualizacao;
+            if (stats.varrendo) {
+                document.getElementById('btn-varrer').textContent = '⏳ Varrendo...';
+                document.getElementById('btn-varrer').disabled = true;
+            } else {
+                document.getElementById('btn-varrer').textContent = '🔍 Buscar novas menções';
+                document.getElementById('btn-varrer').disabled = false;
+            }
             renderizarTermos();
             renderizar();
         }
@@ -219,27 +227,39 @@
         }
 
         async function varrerAgora() {
-    const btn = document.getElementById('btn-varrer');
-    btn.disabled = true;
-    await fetch('/api/varrer', { method: 'POST' });
-    let segundos = 0;
-    const intervalo = setInterval(async () => {
-        segundos += 10;
-        btn.textContent = `⏳ Buscando... ${segundos}s`;
-        await carregar();
-        if (segundos >= 300) {
-            clearInterval(intervalo);
-            btn.textContent = '🔍 Buscar novas menções';
-            btn.disabled = false;
+            const btn = document.getElementById('btn-varrer');
+            btn.disabled = true;
+            btn.textContent = '⏳ Varrendo...';
+            await fetch('/api/varrer', { method: 'POST' });
+            const intervalo = setInterval(async () => {
+                await carregar();
+                if (!document.getElementById('btn-varrer').disabled) {
+                    clearInterval(intervalo);
+                }
+            }, 10000);
+            setTimeout(() => {
+                clearInterval(intervalo);
+                btn.textContent = '🔍 Buscar novas menções';
+                btn.disabled = false;
+                carregar();
+            }, 600000);
         }
-    }, 10000);
-}
 
         function filtrar(tipo, btn) {
             filtroAtual = tipo;
             document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
             btn.classList.add('ativo');
             renderizar();
+        }
+
+        async function ocultarMencao(link) {
+            if (!confirm('Ocultar esta menção? Ela não aparecerá mais mesmo em novas varreduras.')) return;
+            await fetch('/api/ocultar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ link })
+            });
+            await carregar();
         }
 
         function renderizar() {
@@ -253,6 +273,7 @@
                 const corrigido = m.sentimento_original ? `<span style="font-size:11px;color:#9c27b0">✏️ Corrigido de ${m.sentimento_original}</span>` : '';
                 const feedbackSalvo = m.feedback ? `<span class="feedback-salvo">✓ "${m.feedback}"</span>` : '';
                 const termoBadge = m.termo && m.termo !== 'blog' ? `<span style="background:#f3f4f6;color:#666;padding:2px 8px;border-radius:10px;font-size:11px">${m.termo}</span>` : '';
+                const linkEscapado = m.link.replace(/'/g, "\\'");
                 return `
                 <div class="mencao ${m.sentimento}" id="mencao-${i}">
                     <div class="mencao-top">
@@ -269,6 +290,7 @@
                     <div class="acoes">
                         <span style="font-size:12px;color:#999">Classificação correta?</span>
                         <button class="btn-corrigir" onclick="abrirCorrecao(${i})">✏️ Corrigir</button>
+                        <button class="btn-ocultar" onclick="ocultarMencao('${linkEscapado}')">🙈 Ocultar</button>
                         ${feedbackSalvo}
                     </div>
                     <div class="correcao-form" id="form-${i}">
@@ -279,7 +301,7 @@
                         <label>Por que deveria ser essa classificação? (opcional)</label>
                         <input class="motivo-input" id="motivo-${i}" type="text" placeholder="Ex: É uma reclamação sobre barulho do compressor" />
                         <div style="display:flex;gap:8px">
-                            <button class="btn-salvar" onclick="salvarFeedback(${i}, '${m.link}', '${m.sentimento}')">✓ Salvar correção</button>
+                            <button class="btn-salvar" onclick="salvarFeedback(${i}, '${linkEscapado}', '${m.sentimento}')">✓ Salvar correção</button>
                             <button class="btn-cancelar" onclick="fecharCorrecao(${i})">Cancelar</button>
                         </div>
                     </div>
