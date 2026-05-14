@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Daikin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; }
+        header { background: #003087; color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+        header h1 { font-size: 20px; }
+        .container { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+        .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+        .card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card .numero { font-size: 36px; font-weight: bold; margin: 8px 0 4px; }
+        .card .label { font-size: 13px; color: #666; }
+        .card.negativo .numero { color: #e53935; }
+        .card.oportunidade .numero { color: #f57c00; }
+        .card.positivo .numero { color: #43a047; }
+        .card.neutro .numero { color: #757575; }
+        .card.informativo .numero { color: #1565c0; }
+        .painel-termos { background: white; border-radius: 10px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .painel-termos h3 { font-size: 15px; margin-bottom: 6px; color: #003087; }
+        .painel-termos p { font-size: 12px; color: #888; margin-bottom: 14px; }
+        .termos-lista { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; min-height: 36px; }
+        .termo-tag { display: flex; align-items: center; gap: 6px; background: #e8eaf6; color: #003087; padding: 5px 12px; border-radius: 20px; font-size: 13px; }
+        .termo-tag button { background: none; border: none; cursor: pointer; color: #c62828; font-size: 15px; line-height: 1; padding: 0; }
+        .termo-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .termo-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 20px; font-size: 13px; font-family: Arial; }
+        .btn-add { background: #003087; color: white; border: none; border-radius: 20px; padding: 8px 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .btn-add:hover { background: #00409c; }
+        .btn-salvar-termos { background: #43a047; color: white; border: none; border-radius: 20px; padding: 8px 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .btn-salvar-termos:hover { background: #388e3c; }
+        .dica-daikin { font-size: 11px; color: #f57c00; margin-top: 8px; display: none; }
+        .dica-daikin.show { display: block; }
+        .filtros { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .filtro-btn { padding: 7px 16px; border: none; border-radius: 20px; cursor: pointer; font-size: 13px; background: #e0e0e0; color: #333; }
+        .filtro-btn.ativo { color: white; }
+        .filtro-btn.todos.ativo { background: #003087; }
+        .filtro-btn.negativo.ativo { background: #e53935; }
+        .filtro-btn.oportunidade.ativo { background: #f57c00; }
+        .filtro-btn.positivo.ativo { background: #43a047; }
+        .filtro-btn.neutro.ativo { background: #757575; }
+        .filtro-btn.informativo.ativo { background: #1565c0; }
+        .btn-varrer { background: #003087; color: white; border: none; border-radius: 20px; padding: 7px 18px; font-size: 13px; cursor: pointer; margin-left: auto; }
+        .btn-varrer:hover { background: #00409c; }
+        .btn-varrer:disabled { background: #90a4ae; cursor: not-allowed; }
+        .lista { display: flex; flex-direction: column; gap: 12px; }
+        .mencao { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 5px solid #ccc; }
+        .mencao.NEGATIVO { border-left-color: #e53935; }
+        .mencao.OPORTUNIDADE { border-left-color: #f57c00; }
+        .mencao.POSITIVO { border-left-color: #43a047; }
+        .mencao.NEUTRO { border-left-color: #757575; }
+        .mencao.INFORMATIVO { border-left-color: #1565c0; }
+        .mencao-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+        .mencao-titulo { font-size: 15px; font-weight: bold; margin-bottom: 6px; }
+        .mencao-meta { font-size: 12px; color: #888; margin-bottom: 8px; }
+        .mencao-link a { font-size: 13px; color: #1565c0; text-decoration: none; }
+        .mencao-link a:hover { text-decoration: underline; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .badge.NEGATIVO { background: #ffebee; color: #e53935; }
+        .badge.OPORTUNIDADE { background: #fff3e0; color: #f57c00; }
+        .badge.POSITIVO { background: #e8f5e9; color: #43a047; }
+        .badge.NEUTRO { background: #f5f5f5; color: #757575; }
+        .badge.INFORMATIVO { background: #e3f2fd; color: #1565c0; }
+        .badge.corrigido { background: #ede7f6; color: #6a1b9a; }
+        .acoes { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .btn-corrigir { background: none; border: 1px solid #ccc; border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; color: #666; }
+        .btn-corrigir:hover { background: #f5f5f5; }
+        .correcao-form { display: none; margin-top: 10px; background: #f9f9f9; border-radius: 8px; padding: 12px; }
+        .correcao-form.aberto { display: block; }
+        .correcao-form label { font-size: 12px; color: #666; display: block; margin-bottom: 6px; }
+        .correcao-opcoes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+        .opcao-btn { padding: 5px 12px; border: 1px solid #ccc; border-radius: 20px; font-size: 12px; cursor: pointer; background: white; }
+        .opcao-btn:hover { background: #f0f0f0; }
+        .opcao-btn.selecionado { background: #003087; color: white; border-color: #003087; }
+        .motivo-input { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; margin-bottom: 8px; font-family: Arial; }
+        .btn-salvar { background: #003087; color: white; border: none; border-radius: 20px; padding: 6px 16px; font-size: 12px; cursor: pointer; }
+        .btn-cancelar { background: none; border: 1px solid #ccc; border-radius: 20px; padding: 6px 16px; font-size: 12px; cursor: pointer; color: #666; }
+        .feedback-salvo { font-size: 12px; color: #43a047; font-weight: bold; }
+        .vazio { text-align: center; padding: 48px; color: #aaa; font-size: 15px; }
+        .atualizar { background: white; color: #003087; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .atualizar:hover { background: #e8eaf6; }
+        .aviso { padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-top: 10px; display: none; }
+        .aviso.show { display: block; }
+        .aviso.verde { background: #e8f5e9; color: #2e7d32; }
+        .aviso.laranja { background: #fff3e0; color: #e65100; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📡 Monitor de Marca — Daikin Brasil</h1>
+        <div style="display:flex;align-items:center;gap:16px">
+            <span id="ultima" style="font-size:13px;opacity:0.8">Carregando...</span>
+            <button class="atualizar" onclick="carregar()">↻ Recarregar painel</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="cards">
+            <div class="card negativo"><div>😟</div><div class="numero" id="n-negativo">0</div><div class="label">Negativas</div></div>
+            <div class="card oportunidade"><div>💡</div><div class="numero" id="n-oportunidade">0</div><div class="label">Oportunidades</div></div>
+            <div class="card positivo"><div>😊</div><div class="numero" id="n-positivo">0</div><div class="label">Positivas</div></div>
+            <div class="card neutro"><div>😐</div><div class="numero" id="n-neutro">0</div><div class="label">Neutras</div></div>
+            <div class="card informativo"><div>📰</div><div class="numero" id="n-informativo">0</div><div class="label">Informativas</div></div>
+        </div>
+
+        <div class="painel-termos">
+            <h3>🔍 Termos monitorados</h3>
+            <p>Digite qualquer termo relacionado à Daikin. A palavra "Daikin" será incluída automaticamente na busca se você não digitar.</p>
+            <div class="termos-lista" id="termos-lista"></div>
+            <div class="termo-add">
+                <input class="termo-input" id="novo-termo" type="text" placeholder="Ex: split inverter, assistência técnica, ar condicionado..." onkeydown="if(event.key==='Enter') adicionarTermo()" oninput="verificarDaikin(this.value)" />
+                <button class="btn-add" onclick="adicionarTermo()">+ Adicionar</button>
+                <button class="btn-salvar-termos" onclick="salvarTermos()">✓ Salvar termos</button>
+            </div>
+            <div class="dica-daikin" id="dica-daikin">⚠️ "Daikin" será adicionado automaticamente a este termo na busca.</div>
+            <div class="aviso verde" id="aviso-termos">✓ Termos salvos! A próxima varredura já usará os novos termos.</div>
+        </div>
+
+        <div class="filtros">
+            <button class="filtro-btn todos ativo" onclick="filtrar('todos', this)">Todas</button>
+            <button class="filtro-btn negativo" onclick="filtrar('NEGATIVO', this)">😟 Negativas</button>
+            <button class="filtro-btn oportunidade" onclick="filtrar('OPORTUNIDADE', this)">💡 Oportunidades</button>
+            <button class="filtro-btn positivo" onclick="filtrar('POSITIVO', this)">😊 Positivas</button>
+            <button class="filtro-btn neutro" onclick="filtrar('NEUTRO', this)">😐 Neutras</button>
+            <button class="filtro-btn informativo" onclick="filtrar('INFORMATIVO', this)">📰 Informativas</button>
+            <button class="btn-varrer" id="btn-varrer" onclick="varrerAgora()">🔍 Buscar novas menções</button>
+        </div>
+
+        <div class="lista" id="lista"></div>
+    </div>
+
+    <script>
+        let todasMencoes = [];
+        let filtroAtual = 'todos';
+        let termosAtivos = [];
+        const categorias = ['NEGATIVO', 'OPORTUNIDADE', 'POSITIVO', 'NEUTRO', 'INFORMATIVO'];
+
+        async function carregar() {
+            const [mencoes, stats, termos] = await Promise.all([
+                fetch('/api/mencoes').then(r => r.json()),
+                fetch('/api/stats').then(r => r.json()),
+                fetch('/api/termos').then(r => r.json())
+            ]);
+            todasMencoes = mencoes;
+            termosAtivos = termos;
+            document.getElementById('n-negativo').textContent = stats.negativo;
+            document.getElementById('n-oportunidade').textContent = stats.oportunidade;
+            document.getElementById('n-positivo').textContent = stats.positivo;
+            document.getElementById('n-neutro').textContent = stats.neutro;
+            document.getElementById('n-informativo').textContent = stats.informativo;
+            document.getElementById('ultima').textContent = 'Atualizado: ' + stats.ultima_atualizacao;
+            renderizarTermos();
+            renderizar();
+        }
+
+        function verificarDaikin(valor) {
+            const dica = document.getElementById('dica-daikin');
+            if (valor.trim() && !valor.toLowerCase().includes('daikin')) {
+                dica.classList.add('show');
+            } else {
+                dica.classList.remove('show');
+            }
+        }
+
+        function renderizarTermos() {
+            const lista = document.getElementById('termos-lista');
+            if (termosAtivos.length === 0) {
+                lista.innerHTML = '<span style="color:#aaa;font-size:13px">Nenhum termo adicionado.</span>';
+                return;
+            }
+            lista.innerHTML = termosAtivos.map((t, i) => `
+                <div class="termo-tag">
+                    <span>${t.replace(/\+/g, ' ')}</span>
+                    <button onclick="removerTermo(${i})" title="Remover">×</button>
+                </div>
+            `).join('');
+        }
+
+        function adicionarTermo() {
+            const input = document.getElementById('novo-termo');
+            const valor = input.value.trim();
+            if (!valor) return;
+            const formatado = valor.replace(/ /g, '+');
+            if (!termosAtivos.includes(formatado)) {
+                termosAtivos.push(formatado);
+                renderizarTermos();
+            }
+            input.value = '';
+            document.getElementById('dica-daikin').classList.remove('show');
+        }
+
+        function removerTermo(i) {
+            if (termosAtivos.length === 1) {
+                alert('Precisa ter pelo menos um termo monitorado!');
+                return;
+            }
+            termosAtivos.splice(i, 1);
+            renderizarTermos();
+        }
+
+        async function salvarTermos() {
+            if (termosAtivos.length === 0) {
+                alert('Adicione pelo menos um termo antes de salvar!');
+                return;
+            }
+            const resp = await fetch('/api/termos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ termos: termosAtivos.map(t => t.replace(/\+/g, ' ')) })
+            });
+            const dados = await resp.json();
+            termosAtivos = dados.termos;
+            renderizarTermos();
+            const aviso = document.getElementById('aviso-termos');
+            aviso.classList.add('show');
+            setTimeout(() => aviso.classList.remove('show'), 3000);
+        }
+
+        async function varrerAgora() {
+    const btn = document.getElementById('btn-varrer');
+    btn.disabled = true;
+    await fetch('/api/varrer', { method: 'POST' });
+    let segundos = 0;
+    const intervalo = setInterval(async () => {
+        segundos += 10;
+        btn.textContent = `⏳ Buscando... ${segundos}s`;
+        await carregar();
+        if (segundos >= 300) {
+            clearInterval(intervalo);
+            btn.textContent = '🔍 Buscar novas menções';
+            btn.disabled = false;
+        }
+    }, 10000);
+}
+
+        function filtrar(tipo, btn) {
+            filtroAtual = tipo;
+            document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('ativo'));
+            btn.classList.add('ativo');
+            renderizar();
+        }
+
+        function renderizar() {
+            const lista = document.getElementById('lista');
+            const filtradas = filtroAtual === 'todos' ? todasMencoes : todasMencoes.filter(m => m.sentimento === filtroAtual);
+            if (filtradas.length === 0) {
+                lista.innerHTML = '<div class="vazio">Nenhuma menção encontrada.</div>';
+                return;
+            }
+            lista.innerHTML = filtradas.map((m, i) => {
+                const corrigido = m.sentimento_original ? `<span style="font-size:11px;color:#9c27b0">✏️ Corrigido de ${m.sentimento_original}</span>` : '';
+                const feedbackSalvo = m.feedback ? `<span class="feedback-salvo">✓ "${m.feedback}"</span>` : '';
+                const termoBadge = m.termo && m.termo !== 'blog' ? `<span style="background:#f3f4f6;color:#666;padding:2px 8px;border-radius:10px;font-size:11px">${m.termo}</span>` : '';
+                return `
+                <div class="mencao ${m.sentimento}" id="mencao-${i}">
+                    <div class="mencao-top">
+                        <div style="flex:1">
+                            <div class="mencao-titulo">${m.titulo}</div>
+                            <div class="mencao-meta">📍 ${m.fonte} &nbsp;|&nbsp; 📅 ${m.data} &nbsp;${termoBadge}</div>
+                            <div class="mencao-link"><a href="${m.link}" target="_blank">🔗 Ver publicação</a></div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                            <span class="badge ${m.sentimento_original ? 'corrigido' : m.sentimento}">${m.sentimento}</span>
+                            ${corrigido}
+                        </div>
+                    </div>
+                    <div class="acoes">
+                        <span style="font-size:12px;color:#999">Classificação correta?</span>
+                        <button class="btn-corrigir" onclick="abrirCorrecao(${i})">✏️ Corrigir</button>
+                        ${feedbackSalvo}
+                    </div>
+                    <div class="correcao-form" id="form-${i}">
+                        <label>Qual a classificação correta?</label>
+                        <div class="correcao-opcoes" id="opcoes-${i}">
+                            ${categorias.map(c => `<button class="opcao-btn" onclick="selecionarOpcao(${i}, '${c}', this)">${c}</button>`).join('')}
+                        </div>
+                        <label>Por que deveria ser essa classificação? (opcional)</label>
+                        <input class="motivo-input" id="motivo-${i}" type="text" placeholder="Ex: É uma reclamação sobre barulho do compressor" />
+                        <div style="display:flex;gap:8px">
+                            <button class="btn-salvar" onclick="salvarFeedback(${i}, '${m.link}', '${m.sentimento}')">✓ Salvar correção</button>
+                            <button class="btn-cancelar" onclick="fecharCorrecao(${i})">Cancelar</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function abrirCorrecao(i) { document.getElementById(`form-${i}`).classList.add('aberto'); }
+        function fecharCorrecao(i) { document.getElementById(`form-${i}`).classList.remove('aberto'); }
+
+        function selecionarOpcao(i, categoria, btn) {
+            document.querySelectorAll(`#opcoes-${i} .opcao-btn`).forEach(b => b.classList.remove('selecionado'));
+            btn.classList.add('selecionado');
+            btn.dataset.categoria = categoria;
+        }
+
+        async function salvarFeedback(i, link, classificacaoOriginal) {
+            const selecionado = document.querySelector(`#opcoes-${i} .opcao-btn.selecionado`);
+            if (!selecionado) { alert('Selecione uma classificação!'); return; }
+            const motivo = document.getElementById(`motivo-${i}`).value;
+            await fetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ link, classificacao_original: classificacaoOriginal, classificacao_correta: selecionado.dataset.categoria, motivo })
+            });
+            fecharCorrecao(i);
+            await carregar();
+        }
+
+        carregar();
+        setInterval(carregar, 60000);
+    </script>
+</body>
+</html>

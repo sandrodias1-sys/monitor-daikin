@@ -1,0 +1,7 @@
+historico.json
+mencoes.json
+feedbacks.json
+termos.json
+__pycache__/
+*.pyc
+.env
