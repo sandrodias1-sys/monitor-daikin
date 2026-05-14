@@ -259,16 +259,17 @@ def executar_varredura():
             for entry in feed.entries[:5]:
                 titulo = entry.get("title", "")
                 link = entry.get("link", "")
-                texto_verificar = (titulo + " " + conteudo).lower()
+                conteudo_blog = extrair_conteudo(link)
+                texto_verificar = (titulo + " " + conteudo_blog).lower()
                 if "daikin" not in texto_verificar:
-                        continue
-                    todas.append({
-                        "titulo": titulo,
-                        "conteudo": conteudo,
-                        "link": link,
-                        "fonte": nome,
-                        "termo": termo_display,
-                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    continue
+                todas.append({
+                    "titulo": titulo,
+                    "conteudo": conteudo_blog,
+                    "link": link,
+                    "fonte": "Blog",
+                    "termo": "blog",
+                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
                 })
 
         novas = [m for m in todas if not ja_visto(m["link"], historico)]
