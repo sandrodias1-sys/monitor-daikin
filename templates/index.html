@@ -145,7 +145,7 @@
                 fetch('/api/termos').then(r => r.json())
             ]);
             todasMencoes = mencoes;
-            termosAtivos = termos;
+            if (termosAtivos.length === 0) termosAtivos = termos;
             document.getElementById('n-negativo').textContent = stats.negativo;
             document.getElementById('n-oportunidade').textContent = stats.oportunidade;
             document.getElementById('n-positivo').textContent = stats.positivo;
