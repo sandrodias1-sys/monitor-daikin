@@ -330,7 +330,11 @@
         }
 
         carregar();
-        setInterval(carregar, 60000);
+        setInterval(() => {
+    if (!document.querySelector('.correcao-form.aberto')) {
+        carregar();
+    }
+}, 60000);
     </script>
 </body>
 </html>

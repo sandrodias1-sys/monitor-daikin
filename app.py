@@ -272,7 +272,8 @@ def executar_varredura():
                     "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
                 })
 
-        novas = [m for m in todas if not ja_visto(m["link"], historico)]
+          ocultos = carregar_json("ocultos.json", [])
+        novas = [m for m in todas if not ja_visto(m["link"], historico) and m["link"] not in ocultos]
 
         if novas:
             for m in novas:
@@ -373,6 +374,19 @@ def api_limpar():
     for arquivo in [ARQUIVO_HISTORICO, ARQUIVO_MENCOES]:
         if os.path.exists(arquivo):
             os.remove(arquivo)
+    return jsonify({"ok": True})
+
+@app.route("/api/ocultar", methods=["POST"])
+def api_ocultar():
+    dados = request.json
+    link = dados.get("link")
+    historico = carregar_json(ARQUIVO_HISTORICO, [])
+    if not any(h.get("link") == link for h in historico):
+        historico.append({"link": link, "oculto": True})
+        salvar_json(ARQUIVO_HISTORICO, historico)
+    mencoes = carregar_json(ARQUIVO_MENCOES, [])
+    mencoes = [m for m in mencoes if m["link"] != link]
+    salvar_json(ARQUIVO_MENCOES, mencoes)
     return jsonify({"ok": True})
 
 if __name__ == "__main__":
