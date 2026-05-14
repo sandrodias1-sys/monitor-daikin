@@ -53,7 +53,7 @@ def carregar_termos():
     return termos
 
 def ja_visto(link, historico):
-    return any(h["link"] == link for h in historico)
+    return any(h.get("link") == link for h in historico)
 
 def carregar_exemplos_feedback():
     feedbacks = carregar_json(ARQUIVO_FEEDBACKS, [])
@@ -140,7 +140,10 @@ def buscar_youtube(termo):
         resposta = requests.get(url, params=params)
         dados = resposta.json()
         mencoes = []
-        palavras_portugues = ["ção", "ões", "ão", "condicionado", "instalação", "climatização", "assistência", "manutenção", "inverter", "split", "preço", "comprar", "brasil", "brasileiro", "review", "avaliação", "como", "para", "com", "não", "está", "uma", "que"]
+        palavras_portugues = ["ção", "ões", "ão", "condicionado", "instalação", "climatização",
+                              "assistência", "manutenção", "inverter", "split", "preço", "comprar",
+                              "brasil", "brasileiro", "avaliação", "como", "para", "com", "não",
+                              "está", "uma", "que", "daikin"]
         for item in dados.get("items", []):
             titulo = item["snippet"]["title"]
             descricao = item["snippet"].get("description", "")
@@ -223,6 +226,7 @@ def executar_varredura():
     try:
         termos = carregar_termos()
         historico = carregar_json(ARQUIVO_HISTORICO, [])
+        links_ocultos = [h["link"] for h in historico if h.get("oculto")]
         todas = []
 
         for termo in termos:
@@ -272,8 +276,7 @@ def executar_varredura():
                     "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
                 })
 
-          ocultos = carregar_json("ocultos.json", [])
-        novas = [m for m in todas if not ja_visto(m["link"], historico) and m["link"] not in ocultos]
+        novas = [m for m in todas if not ja_visto(m["link"], historico) and m["link"] not in links_ocultos]
 
         if novas:
             for m in novas:
@@ -369,13 +372,6 @@ def api_varrer():
     thread.start()
     return jsonify({"ok": True, "mensagem": "Varredura iniciada!"})
 
-@app.route("/api/limpar", methods=["POST"])
-def api_limpar():
-    for arquivo in [ARQUIVO_HISTORICO, ARQUIVO_MENCOES]:
-        if os.path.exists(arquivo):
-            os.remove(arquivo)
-    return jsonify({"ok": True})
-
 @app.route("/api/ocultar", methods=["POST"])
 def api_ocultar():
     dados = request.json
@@ -387,6 +383,13 @@ def api_ocultar():
     mencoes = carregar_json(ARQUIVO_MENCOES, [])
     mencoes = [m for m in mencoes if m["link"] != link]
     salvar_json(ARQUIVO_MENCOES, mencoes)
+    return jsonify({"ok": True})
+
+@app.route("/api/limpar", methods=["POST"])
+def api_limpar():
+    for arquivo in [ARQUIVO_HISTORICO, ARQUIVO_MENCOES]:
+        if os.path.exists(arquivo):
+            os.remove(arquivo)
     return jsonify({"ok": True})
 
 if __name__ == "__main__":
